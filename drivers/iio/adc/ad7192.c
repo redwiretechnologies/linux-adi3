@@ -375,7 +375,7 @@ static int ad7192_clock_select(struct ad7192_state *st)
 
 	/* use internal clock */
 	if (!st->mclk) {
-		if (device_property_read_bool(dev, "adi,int-clock-output-enable"))
+		if (of_property_read_bool(np, "adi,int-clock-output-enable"))
 			clock_sel = AD7192_CLK_INT_CO;
 	} else {
 		if (device_property_read_bool(dev, "adi,clock-xtal"))
@@ -387,7 +387,8 @@ static int ad7192_clock_select(struct ad7192_state *st)
 	return clock_sel;
 }
 
-static int ad7192_setup(struct iio_dev *indio_dev, struct device *dev)
+static int ad7192_setup(struct iio_dev *indio_dev, struct device_node *np)
+
 {
 	struct ad7192_state *st = iio_priv(indio_dev);
 	bool rej60_en, refin2_en;
@@ -483,7 +484,7 @@ static ssize_t ad7192_show_ac_excitation(struct device *dev,
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ad7192_state *st = iio_priv(indio_dev);
 
-	return sysfs_emit(buf, "%ld\n", FIELD_GET(AD7192_CONF_ACX, st->conf));
+	return sysfs_emit(buf, "%d\n", !!(st->conf & AD7192_CONF_ACX));
 }
 
 static ssize_t ad7192_show_bridge_switch(struct device *dev,
@@ -972,8 +973,8 @@ static const struct iio_info ad7195_info = {
 		BIT(IIO_CHAN_INFO_SCALE), 0, ad7192_calibsys_ext_info)
 
 #define AD719x_CHANNEL(_si, _channel1, _address) \
-	__AD719x_CHANNEL(_si, _channel1, -1, _address, IIO_VOLTAGE, 0, \
-		BIT(IIO_CHAN_INFO_SCALE), 0, ad7192_calibsys_ext_info)
+	__AD719x_CHANNEL(_si, _channel1, -1, _address, NULL, IIO_VOLTAGE, \
+		BIT(IIO_CHAN_INFO_SCALE), ad7192_calibsys_ext_info)
 
 #define AD719x_TEMP_CHANNEL(_si, _address) \
 	__AD719x_CHANNEL(_si, 0, -1, _address, IIO_TEMP, 0, 0, 0, NULL)
@@ -1016,6 +1017,15 @@ static const struct iio_chan_spec ad7193_channels[] = {
 	AD7193_CHANNEL(11, 6, AD7193_CH_AIN6),
 	AD7193_CHANNEL(12, 7, AD7193_CH_AIN7),
 	AD7193_CHANNEL(13, 8, AD7193_CH_AIN8),
+	AD719x_DIFF_CHANNEL(5, 2, 2, AD7193_CH_AIN2P_AIN2M),
+	AD719x_CHANNEL(6, 1, AD7193_CH_AIN1),
+	AD719x_CHANNEL(7, 2, AD7193_CH_AIN2),
+	AD719x_CHANNEL(8, 3, AD7193_CH_AIN3),
+	AD719x_CHANNEL(9, 4, AD7193_CH_AIN4),
+	AD719x_CHANNEL(10, 5, AD7193_CH_AIN5),
+	AD719x_CHANNEL(11, 6, AD7193_CH_AIN6),
+	AD719x_CHANNEL(12, 7, AD7193_CH_AIN7),
+	AD719x_CHANNEL(13, 8, AD7193_CH_AIN8),
 	IIO_CHAN_SOFT_TIMESTAMP(14),
 };
 
@@ -1164,7 +1174,7 @@ static int ad7192_probe(struct spi_device *spi)
 		}
 	}
 
-	ret = ad7192_setup(indio_dev, &spi->dev);
+	ret = ad7192_setup(indio_dev, spi->dev.of_node);
 	if (ret)
 		return ret;
 

@@ -16,6 +16,7 @@ config ARCH_ZYNQ
 	help
 	  Support for Xilinx Zynq ARM Cortex A9 Platform
 
+
 if ARCH_ZYNQ
 
 menu "Xilinx Specific Options"

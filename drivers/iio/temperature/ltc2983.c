@@ -232,7 +232,6 @@ struct ltc2983_data {
 	 */
 	__be32 temp __aligned(IIO_DMA_MINALIGN);
 	__be32 chan_val;
-	__be32 eeprom_key;
 };
 
 struct ltc2983_sensor {

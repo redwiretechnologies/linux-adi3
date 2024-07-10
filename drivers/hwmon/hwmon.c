@@ -861,6 +861,7 @@ __hwmon_device_register(struct device *dev, const char *name, void *drvdata,
 	struct hwmon_device *hwdev;
 	const char *label;
 	struct device *hdev;
+	struct device *tdev = dev;
 	int i, err, id;
 
 	/* Complain about invalid characters in hwmon name attribute */
@@ -930,7 +931,9 @@ __hwmon_device_register(struct device *dev, const char *name, void *drvdata,
 	hwdev->name = name;
 	hdev->class = &hwmon_class;
 	hdev->parent = dev;
-	hdev->of_node = dev ? dev->of_node : NULL;
+	while (tdev && !tdev->of_node)
+		tdev = tdev->parent;
+	hdev->of_node = tdev ? tdev->of_node : NULL;
 	hwdev->chip = chip;
 	dev_set_drvdata(hdev, drvdata);
 	dev_set_name(hdev, HWMON_ID_FORMAT, id);
@@ -942,27 +945,17 @@ __hwmon_device_register(struct device *dev, const char *name, void *drvdata,
 
 	INIT_LIST_HEAD(&hwdev->tzdata);
 
-	if (dev && dev->of_node && chip && chip->ops->read &&
-	    chip->info[0]->type == hwmon_chip) {
-		u32 config = chip->info[0]->config[0];
-
-		if (config & HWMON_C_REGISTER_TZ) {
-			err = hwmon_thermal_register_sensors(hdev);
-			if (err) {
-				device_unregister(hdev);
-				/*
-				 * Don't worry about hwdev; hwmon_dev_release(),
-				 * called from device_unregister(), will free it.
-				 */
-				goto ida_remove;
-			}
-		}
-		if (config & HWMON_C_PEC) {
-			err = hwmon_pec_register(hdev);
-			if (err) {
-				device_unregister(hdev);
-				goto ida_remove;
-			}
+	if (hdev->of_node && chip && chip->ops->read &&
+	    chip->info[0]->type == hwmon_chip &&
+	    (chip->info[0]->config[0] & HWMON_C_REGISTER_TZ)) {
+		err = hwmon_thermal_register_sensors(hdev);
+		if (err) {
+			device_unregister(hdev);
+			/*
+			 * Don't worry about hwdev; hwmon_dev_release(), called
+			 * from device_unregister(), will free it.
+			 */
+			goto ida_remove;
 		}
 	}
 
