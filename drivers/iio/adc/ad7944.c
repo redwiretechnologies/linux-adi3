@@ -13,6 +13,7 @@
 #include <linux/err.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
+#include <linux/mod_devicetable.h>
 #include <linux/property.h>
 #include <linux/pwm.h>
 #include <linux/regulator/consumer.h>
@@ -21,6 +22,7 @@
 #include <linux/string_helpers.h>
 
 #include <linux/iio/iio.h>
+#include <linux/iio/driver.h>
 #include <linux/iio/sysfs.h>
 #include <linux/iio/buffer-dmaengine.h>
 #include <linux/iio/trigger_consumer.h>
@@ -593,7 +595,7 @@ static int ad7944_probe(struct spi_device *spi)
 	adc = iio_priv(indio_dev);
 	adc->spi = spi;
 
-	chip_info = spi_get_device_match_data(spi);
+	chip_info = device_get_match_data(dev);
 	if (!chip_info)
 		return dev_err_probe(dev, -EINVAL, "no chip info\n");
 

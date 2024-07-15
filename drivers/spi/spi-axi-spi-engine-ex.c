@@ -326,7 +326,8 @@ int spi_engine_ex_offload_load_msg(struct spi_device *spi,
 {
 	struct spi_controller *host = spi->controller;
 	struct spi_engine *spi_engine = spi_controller_get_devdata(host);
-	struct spi_engine_program *p = msg->opt_state;
+	struct spi_engine_program p_dry;
+	struct spi_engine_program *p;
 	struct spi_transfer *xfer;
 	void __iomem *cmd_addr;
 	void __iomem *sdo_addr;

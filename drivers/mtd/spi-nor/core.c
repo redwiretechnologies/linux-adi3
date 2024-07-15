@@ -3345,28 +3345,15 @@ static int spi_nor_init_params(struct spi_nor *nor)
 {
 	struct spi_nor_flash_parameter *params = spi_nor_get_params(nor, 0);
 	int ret;
-#ifdef CONFIG_OF
-	struct device_node *np = spi_nor_get_flash_node(nor);
-	struct device_node *np_spi;
-	np_spi = of_get_next_parent(np);
-	locking_disable = of_property_read_bool(np_spi, "spi-nor-locking-disable");
-#endif
-
+	
 	params = devm_kzalloc(nor->dev, sizeof(*params), GFP_KERNEL);
 	if (!params)
 		return -ENOMEM;
-
+	
 	spi_nor_set_params(nor, 0, params);
-
+	
 	spi_nor_init_default_params(nor);
-
-	/*
-	 * Don't move - needs to be behind spi_nor_manufacturer_init_params()
-	 * and before spi_nor_late_init_params()
-	 */
-	if (locking_disable)
-		nor->flags &= ~SNOR_F_HAS_LOCK;
-
+	
 	if (nor->info->parse_sfdp) {
 		ret = spi_nor_parse_sfdp(nor);
 		if (ret) {
@@ -3378,9 +3365,9 @@ static int spi_nor_init_params(struct spi_nor *nor)
 	} else {
 		spi_nor_init_params_deprecated(nor);
 	}
-
+	
 	spi_nor_late_init_params(nor);
-
+	
 	return 0;
 }
 

@@ -23,6 +23,9 @@
 #include <linux/gpio/regmap.h>
 #include <linux/idr.h>
 #include <linux/interrupt.h>
+#include <linux/kernel.h>
+#include <linux/kfifo.h>
+#include <linux/of_device.h>
 #include <linux/math64.h>
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
@@ -177,6 +180,12 @@ struct ad7173_device_info {
 	u8 num_gpios;
 };
 
+struct ad7173_chip_info {
+	const char *name;
+	unsigned int chip_id;
+	unsigned int num_inputs;
+};
+
 struct ad7173_channel_config {
 	u8 cfg_slot;
 	bool live;
@@ -197,6 +206,7 @@ struct ad7173_channel {
 };
 
 struct ad7173_state {
+	const struct ad7173_chip_info *chip_info;
 	struct ad_sigma_delta sd;
 	const struct ad7173_device_info *info;
 	struct ad7173_channel *channels;
@@ -1379,24 +1389,24 @@ static int ad7173_fw_parse_device_config(struct iio_dev *indio_dev)
 
 static int ad7173_probe(struct spi_device *spi)
 {
-	struct device *dev = &spi->dev;
+	const struct ad7173_chip_info *info;
 	struct ad7173_state *st;
 	struct iio_dev *indio_dev;
 	int ret;
 
-	indio_dev = devm_iio_device_alloc(dev, sizeof(*st));
+	info = of_device_get_match_data(&spi->dev);
+	if (!info)
+		info = (void *)spi_get_device_id(spi)->driver_data;
+	if (!info)
+		return -ENODEV;
+	
+	indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*st));
 	if (!indio_dev)
 		return -ENOMEM;
-
+	
 	st = iio_priv(indio_dev);
-	st->info = spi_get_device_match_data(spi);
-	if (!st->info)
-		return -ENODEV;
-
-	ida_init(&st->cfg_slots_status);
-	ret = devm_add_action_or_reset(dev, ad7173_ida_destroy, st);
-	if (ret)
-		return ret;
+	
+	st->chip_info = info;;
 
 	indio_dev->name = st->info->name;
 	indio_dev->modes = INDIO_DIRECT_MODE;
@@ -1414,7 +1424,7 @@ static int ad7173_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	ret = devm_ad_sd_setup_buffer_and_trigger(dev, indio_dev);
+	ret = devm_ad_sd_setup_buffer_and_trigger(&spi->dev, indio_dev);
 	if (ret)
 		return ret;
 
@@ -1422,7 +1432,7 @@ static int ad7173_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	ret = devm_iio_device_register(dev, indio_dev);
+	ret = devm_iio_device_register(&spi->dev, indio_dev);
 	if (ret)
 		return ret;
 

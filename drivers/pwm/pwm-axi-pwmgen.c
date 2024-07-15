@@ -162,7 +162,7 @@ static int axi_pwmgen_capture(struct pwm_chip *chip, struct pwm_device *device,
 	return 0;
 }
 
-static void axi_pwmgen_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
+static int axi_pwmgen_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
 				 struct pwm_state *state)
 {
 	struct pwm_capture capture;
@@ -170,13 +170,14 @@ static void axi_pwmgen_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	ret = axi_pwmgen_capture(chip, pwm, &capture, 0);
 	if (ret < 0)
-		return;
+		return ret;
 
 	state->enabled = state;
 	state->period = capture.period;
 	state->duty_cycle = capture.duty_cycle;
 	state->phase = capture.phase;
 	state->time_unit = capture.time_unit;
+	return ret;
 }
 
 static const struct pwm_ops axi_pwmgen_pwm_ops = {
